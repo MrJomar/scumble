@@ -1,0 +1,21 @@
+{
+  "name": "Studio Dark",
+  "version": "1.0.0",
+  "description": "Dark panels, soft teal and violet accents.",
+  "author": "MrJomar",
+  "homepage": "https://github.com/MrJomar/scumble",
+  "registers": [
+    "skin"
+  ],
+  "skin": {
+    "css": "skin.css",
+    "background": "#1b1d27",
+    "swatch": [
+      "#1b1d27",
+      "#252735",
+      "#e5e6ef",
+      "#c1a8ff"
+    ],
+    "tokens": 1
+  }
+}

@@ -1,0 +1,91 @@
+/* Studio: original design, no external assets. Uses Scumble skin contract v1. */
+:root {
+  --sc-bg: #1b1d27;
+  --sc-chrome: #242633;
+  --sc-chrome-edge: #343747;
+  --sc-surface: #252735;
+  --sc-raised: #303342;
+  --sc-selected: #40335b;
+  --sc-well: #1e202b;
+  --sc-field: #1c1e28;
+  --sc-btn: #2c2f3e;
+  --sc-btn-hover: #39354d;
+  --sc-border: #494c60;
+  --sc-line: #383b4b;
+  --sc-fg-strong: #f7f7fc;
+  --sc-fg: #e5e6ef;
+  --sc-fg-2: #c1c4d3;
+  --sc-muted: #a4a9bc;
+  --sc-faint: #9298ad;
+  --sc-accent: #c1a8ff;
+  --sc-active: #bba0ff;
+  --sc-active-bg: #7650cc;
+  --sc-on-active: #ffffff;
+  --sc-go: #7650cc;
+  --sc-warn: #f5c56b;
+  --sc-ok: #76d6ad;
+  --sc-error: #ff969e;
+  --sc-error-bg: #492a35;
+  --sc-link: #c2aaff;
+  --sc-backdrop: rgba(15, 18, 30, .55);
+  --sc-shadow: 0 12px 32px rgba(0,0,0,.45);
+  --sc-scheme: dark;
+  --sc-control: #7650cc;
+  --sc-scrollbar: #494c60 #1e202b;
+  --sc-font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --sc-font-mono: Consolas, ui-monospace, monospace;
+  --sc-radius-sm: 6px;
+  --sc-radius: 8px;
+  --sc-radius-lg: 14px;
+}
+/* Keep native layout, controls and protected confirmation dialogs intact. */
+#shell-bar, #cb-bar {
+  background: linear-gradient(100deg, #233b40, #35294b 74%, #242633);
+  border-bottom: 1px solid var(--sc-line);
+}
+#shell-logo { color: var(--sc-accent); font-weight: 750; letter-spacing: -.025em; }
+#shell-bar button, #cb-bar button { border-radius: 8px; font-weight: 550; }
+#shell-bar button:hover:not(:disabled), #cb-bar button:hover:not(:disabled) {
+  background: var(--sc-btn-hover); color: var(--sc-accent);
+}
+.shell-tab { border-right-color: transparent; border-radius: 8px 8px 0 0; }
+.shell-tab.active { box-shadow: inset 0 -2px 0 var(--sc-active); }
+#shell-tab-add { border-right-color: transparent; }
+.ipc-tools .ipc-ib { background: transparent; border-color: transparent; border-radius: 8px; }
+.ipc-tools .ipc-ib:hover:not(:disabled) { background: var(--sc-raised); border-color: var(--sc-line); }
+.ipc-tools .ipc-ib.ipc-toggle-on { background: var(--sc-selected); color: var(--sc-accent); border-color: var(--sc-active); }
+.ipc-tools .ipc-ib.ipc-active, .ipc-tools .ipc-ib.ipc-active:hover {
+  background: var(--sc-active-bg); color: var(--sc-on-active); border-color: var(--sc-active-bg);
+}
+.ipc-tools .ipc-ib.ipc-active .ipc-tri { border-bottom-color: var(--sc-on-active); }
+.ipc-tools .ipc-grp { text-transform: none; letter-spacing: 0; font-size: 10px; font-weight: 600; color: var(--sc-muted); }
+#gen-go, #up-go, .ipc-ib.ipc-primary {
+  background: var(--sc-go); color: var(--sc-on-active); border-color: var(--sc-go); font-weight: 650;
+}
+#gen-go:hover:not(:disabled), #up-go:hover:not(:disabled), .ipc-ib.ipc-primary:hover:not(:disabled) {
+  background: var(--sc-active-bg); color: var(--sc-on-active); box-shadow: inset 0 0 0 2px rgba(255,255,255,.24);
+}
+.ipc-flyout { padding: 6px; gap: 2px; border-radius: 12px; }
+.ipc-flyout .ipc-ib { background: transparent; border-color: transparent; border-radius: 8px; }
+.ipc-flyout .ipc-ib:hover:not(:disabled) { background: var(--sc-selected); color: var(--sc-fg-strong); }
+.ipc-flyout .ipc-ib.ipc-active { background: var(--sc-selected); color: var(--sc-fg-strong); box-shadow: inset 3px 0 var(--sc-active); }
+.ipc-tab { text-transform: none; font-weight: 650; letter-spacing: 0; }
+.ipc-tab.ipc-active { border-bottom-color: var(--sc-active); }
+.ipc-side h4, .ipc-side summary {
+  text-transform: none; letter-spacing: 0; font-weight: 650;
+  color: var(--sc-fg-strong); background: var(--sc-raised); border-color: var(--sc-line);
+}
+.ipc-layer.ipc-selected, .ipc-undo-row.ipc-undo-current { box-shadow: inset 3px 0 0 var(--sc-active); }
+#shell-settings h3, .shell-recipe-family, .hp-group { text-transform: none; letter-spacing: 0; font-weight: 650; }
+#shell-settings, #gen-dialog, #up-dialog, #log-dialog { border-radius: 14px; border-color: var(--sc-border); }
+#shell-settings h2, #gen-dialog h2, #up-dialog h2, #log-dialog h2 {
+  color: var(--sc-fg-strong); font-weight: 700; letter-spacing: -.02em;
+}
+.as-bubble, .hp-bubble { border-radius: 12px; border: 1px solid var(--sc-line); }
+::selection { background: var(--sc-active-bg); color: var(--sc-on-active); }
+button:focus-visible, summary:focus-visible, a:focus-visible {
+  outline: 2px solid var(--sc-active); outline-offset: 2px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--sc-active); outline-offset: 0;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Studio Light",
+  "version": "1.0.0",
+  "description": "Clean white panels, soft teal and violet accents.",
+  "author": "MrJomar",
+  "homepage": "https://github.com/MrJomar/scumble",
+  "registers": [
+    "skin"
+  ],
+  "skin": {
+    "css": "skin.css",
+    "background": "#f1f2f6",
+    "swatch": [
+      "#f1f2f6",
+      "#ffffff",
+      "#303342",
+      "#6940c5"
+    ],
+    "tokens": 1
+  }
+}
