@@ -61,7 +61,7 @@ const DEFAULTS = {
     // row 27). `get()` merges only this level, so a stored `assistant` object replaces the whole default:
     // every writer writes the whole merged object
     assistant: { ...require("./assistant/index.js").DEFAULTS, noticed: {} },
-    appearance: { skin: "", refused: null },  // Settings › Appearance (docs/SKINS.md); "" = the default look
+    appearance: { skin: "skin_studio_light", refused: null },  // Settings › Appearance (docs/SKINS.md); "" = the default look
     window: null,
     comfyView: null,   // the ComfyUI window (electron/main/comfyview.js): { bounds, maximized, target: "comfy" | "cloud" }
 };

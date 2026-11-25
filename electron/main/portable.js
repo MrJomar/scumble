@@ -114,7 +114,7 @@ function updateMode({ packaged, store = false, portable = false, platform, insta
 
 /** Whether the NSIS uninstaller sits beside the exe (an installed copy). */
 function isInstalled(execPath, exists) {
-    try { return !!exists(path.win32.join(path.win32.dirname(String(execPath || "")), UNINSTALLER)); } catch (_) { return false; }
+    try { const dir = path.win32.dirname(String(execPath || "")); return !!exists(path.win32.join(dir, "Uninstall Scumble Studio.exe")) || !!exists(path.win32.join(dir, UNINSTALLER)); } catch (_) { return false; }
 }
 
 module.exports = { dataDir, userData, prepare, refusal, updateMode, isInstalled, MARKER, DATA, UNINSTALLER, PROBE, MARKER_TEXT };

@@ -1,16 +1,16 @@
 {
   "name": "scumble",
-  "productName": "Scumble",
-  "version": "0.1.60",
+  "productName": "Scumble Studio",
+  "version": "0.1.61",
   "description": "Desktop editor for AI inpainting: layers, selection by text, retouch, filters, rendered through your own ComfyUI or API providers.",
   "author": "DenRakEiw",
   "license": "GPL-3.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/scumble-app/scumble.git"
+    "url": "https://github.com/MrJomar/scumble.git"
   },
-  "homepage": "https://github.com/scumble-app/scumble",
+  "homepage": "https://github.com/MrJomar/scumble",
   "main": "electron/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -48,8 +48,8 @@
     "typescript": "^5.9.3"
   },
   "build": {
-    "appId": "app.scumble.desktop",
-    "productName": "Scumble",
+    "appId": "com.mrjomar.scumble.studio",
+    "productName": "Scumble Studio",
     "directories": {
       "output": "dist"
     },
@@ -78,9 +78,9 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "scumble-app",
+      "owner": "MrJomar",
       "repo": "scumble",
-      "releaseType": "draft"
+      "releaseType": "release"
     },
     "asar": true,
     "electronLanguages": [
@@ -96,7 +96,7 @@
           ]
         }
       ],
-      "artifactName": "Scumble Setup ${version}.${ext}",
+      "artifactName": "Scumble-Studio-Setup-${version}.${ext}",
       "files": [
         "electron/**/*",
         "renderer/**/*",
@@ -116,8 +116,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Scumble",
-      "perMachine": false
+      "shortcutName": "Scumble Studio",
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "appx": {
       "identityName": "DenRakEiw.Scumble",

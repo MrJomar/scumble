@@ -6,6 +6,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const { app, BrowserWindow, protocol, net, ipcMain, dialog, Menu, shell, clipboard } = require("electron");
+app.setName("Scumble Studio");
 const msix = require("./msix");
 const share = require("./share");
 const portable = require("./portable");
@@ -30,6 +31,7 @@ if (PORTABLE) {
     }
 }
 if (DATA_HOME.dir) app.setPath("userData", DATA_HOME.dir);
+else if (DATA_HOME.from === "default") app.setPath("userData", path.join(app.getPath("appData"), "Scumble Studio"));
 const settings = require("./settings");
 const log = require("./log");
 log.install(require("node:path").join(app.getPath("userData"), "logs"));   // first: the console patch has to be in place before anything logs
@@ -1757,7 +1759,7 @@ async function agentMain() {
         .catch((err) => console.error("MCP backend:", err.message));
 }
 
-app.setName("Scumble");
+app.setName("Scumble Studio");
 if (ARGS.mcp || ARGS.cmd || ARGS.run !== null) {
     agentMain().catch((err) => { process.stderr.write("scumble: " + (err.message || err) + "\n"); app.exit(1); });
 } else if (!app.requestSingleInstanceLock()) {
