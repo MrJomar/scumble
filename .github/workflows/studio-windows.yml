@@ -1,0 +1,85 @@
+name: Scumble Studio Windows
+on:
+  push:
+    branches: [studio-interface]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: studio-windows-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'MrJomar/scumble' && github.ref == 'refs/heads/studio-interface'
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: version
+        shell: pwsh
+        run: |
+          $v = node -p "require('./package.json').version"
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid version" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run types
+      - run: node tools/skins_test.js
+      - run: npx electron-builder --win nsis --publish never
+      - name: Verify installer and update metadata
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          $exe = "dist/Scumble-Studio-Setup-$v.exe"
+          foreach ($file in @($exe, "$exe.blockmap", "dist/latest.yml", "dist/win-unpacked/resources/app-update.yml")) {
+            if (!(Test-Path $file)) { throw "Missing $file" }
+          }
+          $feed = Get-Content dist/win-unpacked/resources/app-update.yml -Raw
+          if ($feed -notmatch 'owner: MrJomar' -or $feed -notmatch 'repo: scumble') { throw "Wrong update feed" }
+          $meta = Get-Content dist/latest.yml -Raw
+          if ($meta -notmatch [regex]::Escape("Scumble-Studio-Setup-$v.exe")) { throw "Wrong installer metadata" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scumble-studio-windows
+          path: |
+            dist/Scumble-Studio-Setup-*.exe
+            dist/Scumble-Studio-Setup-*.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: scumble-studio-windows
+          path: dist
+      - name: Publish immutable version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Version $tag already exists; increment package.json and package-lock.json to publish an update."
+            exit 0
+          fi
+          gh release create "$tag" --target "$SOURCE_SHA" --draft --title "Scumble Studio $VERSION" --notes "Windows x64. Independent fork of Scumble, GPL-3.0. Studio themes and update feed. Installer is unsigned."
+          gh release upload "$tag" "dist/Scumble-Studio-Setup-$VERSION.exe" "dist/Scumble-Studio-Setup-$VERSION.exe.blockmap" "dist/latest.yml"
+          gh release edit "$tag" --draft=false --latest
