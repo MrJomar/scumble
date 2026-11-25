@@ -2,6 +2,7 @@
 // per document), the settings dialog (ComfyUI connection with auth, API provider keys,
 // recipes, local files) and the menu commands.
 import { host, api } from "./editor/host.js";
+import { initStudio, attachStudio } from "./studio.js";
 import { InpaintEditor, STYLE as EDITOR_STYLE } from "./editor/inpaint_canvas.js";
 import { setPixelsOptions } from "./editor/inpaint_pixels.js";
 import { commands, docSummary } from "./commands.js";
@@ -124,6 +125,7 @@ const ui = {
 };
 
 shellState.settings = await window.scumble.settings.get();
+initStudio({ host, openSettings });
 shellState.lastStatus = { state: "disconnected", message: "not connected" };
 shellState.lastProbe = null;
 // the canvas-only view (canvasOnly below): { ed, wasFullScreen, view, fitted, rulers, w, h } while it is on, and
@@ -178,6 +180,7 @@ function newDocument(id) {
     applyHistoryDepth(editor);
     host.addEditor(editor);
     editor.open();
+    attachStudio(editor);
     addCloudMode(editor);
     host.attachBrushTips(editor);      // the shared tip library and its save hook
     renderTabs();

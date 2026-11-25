@@ -37,6 +37,8 @@
             linear-gradient(45deg,transparent 75%,#333 75%),linear-gradient(-45deg,transparent 75%,#333 75%) !important;
         background-size: 16px 16px !important; background-position: 0 0,0 8px,8px -8px,-8px 0 !important;
     }
+    /* Studio uses a neutral light surround. */
+    body.studio-simple .ipc-view { background-color: #e8e9ed !important; background-image: none !important; }
     /* the editor's own question keeps its buttons in their order */
     .ipc-askbox .ipc-askrow { flex-direction: row !important; }
     .ipc-askbox .ipc-askrow > * { order: 0 !important; }
