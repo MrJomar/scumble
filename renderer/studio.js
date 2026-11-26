@@ -94,6 +94,170 @@ function filter(ed, id) {
     if (!(active && active.kind === "filter" && active.filter === id)) ed.addFilterLayer(id);
     revealLayers(ed);
 }
+
+/** Image context toolbar, independent of the native tool-specific options. */
+function attachImageToolbar(ed, openEdit) {
+    const bar = make("div", "studio-imagebar");
+    bar.setAttribute("role", "toolbar");
+    bar.setAttribute("aria-label", "Editar imagen seleccionada");
+    bar.hidden = true;
+    const actions = make("div", "studio-imagebar-actions");
+    bar.appendChild(actions);
+    ed.viewEl.appendChild(bar);
+    const active = () => ed.activeLayer();
+    const canEditLayer = () => {
+        const l = active();
+        return !!(l && l.px && l.kind !== "filter" && l.kind !== "text" && !ed.isReference(l) && !ed.isLocked(l) && !ed.activeGroupId && !ed.multiSelected());
+    };
+    const add = (label, glyph, fn) => {
+        const b = button(label, glyph, fn);
+        actions.appendChild(b);
+        return b;
+    };
+    const divider = () => actions.appendChild(make("span", "studio-imagebar-divider"));
+    const replaceInput = document.createElement("input");
+    replaceInput.type = "file";
+    replaceInput.accept = "image/png,image/jpeg,image/webp,image/bmp,image/gif";
+    replaceInput.hidden = true;
+    bar.appendChild(replaceInput);
+    let replaceTarget = null;
+    const replace = add("Reemplazar", null, () => {
+        if (!active()) {
+            if (ed.base) ed.fileInput.click();
+            return;
+        }
+        if (!canEditLayer()) return;
+        replaceTarget = active();
+        if (replaceTarget.maskPx) {
+            say(ed, "Quita o aplica la máscara antes de reemplazar esta capa; así no pierdes el recorte.");
+            return;
+        }
+        replaceInput.value = "";
+        replaceInput.click();
+    });
+    replaceInput.addEventListener("change", async () => {
+        const file = replaceInput.files && replaceInput.files[0];
+        const target = replaceTarget;
+        replaceTarget = null;
+        if (!file || !target || !ed.layers.includes(target)) return;
+        let bitmap;
+        try {
+            bitmap = await createImageBitmap(file);
+            if (ed._destroyed || active() !== target || !canEditLayer() || target.maskPx || !ed.layers.includes(target)) return;
+            ed.checkBaseSize(bitmap.width, bitmap.height);
+            const canvas = document.createElement("canvas");
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            canvas.getContext("2d").drawImage(bitmap, 0, 0);
+            const px = ed.pixels.Layer.fromCanvas(canvas);
+            if (ed.pending) ed.cancelPending();
+            ed.pushUndo({ kind: "layerfull", id: target.id, label: "Reemplazar imagen" });
+            // Fit the replacement into the previous bounds, keeping its aspect ratio and centre.
+            const scale = Math.min(target.w / bitmap.width, target.h / bitmap.height);
+            const w = Math.max(1, Math.round(bitmap.width * scale));
+            const h = Math.max(1, Math.round(bitmap.height * scale));
+            target.x = Math.round(target.x + (target.w - w) / 2);
+            target.y = Math.round(target.y + (target.h - h) / 2);
+            target.w = w;
+            target.h = h;
+            target.px = px;
+            ed.markLayerChanged(target);
+            ed.renderLayers();
+            ed.updateSubbar();
+            ed.draw();
+            say(ed, "Imagen reemplazada. Puedes deshacer el cambio.");
+        } catch (err) { ed.setStatus("No se pudo reemplazar: " + String(err.message || err), "error"); }
+        finally { if (bitmap) bitmap.close(); }
+    });
+    const edit = button("Editar", null, openEdit);
+    actions.prepend(edit);
+    divider();
+    const removeBg = add("Quitafondos", null, () => cutout(ed));
+    const erase = add("Borrador", null, () => {
+        if (ed.toolGroupOf.remove) {
+            ed.setTool("remove");
+            say(ed, "Pinta sobre el objeto que quieres borrar. Necesita el modelo local LaMa.");
+        } else say(ed, "El borrador inteligente no está disponible en esta instalación.");
+    });
+    divider();
+    const crop = add("Recortar lienzo", "canvas", () => {
+        ed.setTool("canvas");
+        showSection(ed, "Canvas");
+    });
+    const select = (label, options, run) => {
+        const wrap = make("label", "studio-imagebar-select");
+        const el = document.createElement("select");
+        el.setAttribute("aria-label", label);
+        for (const [value, text] of [["", label], ...options]) {
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = text;
+            el.appendChild(opt);
+        }
+        el.addEventListener("change", () => {
+            const v = el.value;
+            el.value = "";
+            if (v) run(v);
+        });
+        wrap.appendChild(el);
+        actions.appendChild(wrap);
+        return el;
+    };
+    const flip = select("Voltear", [["h", "Horizontal"], ["v", "Vertical"]], (v) => {
+        if (canEditLayer()) ed.flipLayer(v);
+    });
+    const opacity = make("label", "studio-imagebar-opacity", "Transparencia");
+    const opacityInput = document.createElement("input");
+    opacityInput.type = "range";
+    opacityInput.min = "0";
+    opacityInput.max = "100";
+    opacityInput.setAttribute("aria-label", "Opacidad de la imagen");
+    const pct = make("span", "studio-opacity-value");
+    opacity.append(opacityInput, pct);
+    actions.appendChild(opacity);
+    opacityInput.addEventListener("input", () => { pct.textContent = opacityInput.value + "%"; });
+    opacityInput.addEventListener("change", () => {
+        if (!canEditLayer()) { sync(); return; }
+        const layer = active();
+        const value = Number(opacityInput.value) / 100;
+        if (value === layer.opacity) return;
+        ed.pushUndo({ kind: "layers", label: "Transparencia" });
+        layer.opacity = value;
+        ed.layersRestacked();
+    });
+    divider();
+    const pos = select("Posición", [["move", "Mover / escalar"], ["center", "Centrar"], ["up", "Adelantar"], ["down", "Retroceder"], ["top", "Al frente"], ["bottom", "Al fondo"]], (v) => {
+        if (!canEditLayer()) return;
+        const layer = active();
+        if (v === "move") ed.setTool("transform");
+        else if (v === "center") ed.centerLayer();
+        else if (v === "up" || v === "down") ed.moveLayer(layer.id, v === "up" ? 1 : -1, { undo: true });
+        else ed.moveLayer(layer.id, 0, { undo: true, to: v });
+    });
+    add("Estilo", "fx", openEdit);
+    function sync() {
+        const l = active();
+        const shown = !!ed.width && (l ? !!l.px && l.kind !== "filter" && l.kind !== "text" && !ed.isReference(l) : !!ed.base?.px);
+        bar.hidden = !shown;
+        ed.root.classList.toggle("studio-imagebar-visible", shown);
+        const editable = canEditLayer();
+        const base = shown && !l;
+        replace.disabled = !(editable || base);
+        removeBg.disabled = !(editable || base);
+        erase.disabled = !(editable || base);
+        crop.disabled = !shown;
+        flip.disabled = !editable;
+        opacityInput.disabled = !editable;
+        pos.disabled = !editable;
+        opacityInput.value = String(Math.round((l?.opacity ?? 1) * 100));
+        pct.textContent = opacityInput.value + "%";
+    }
+    // Rebuilt by native selection, loading, undo, and layer edits. Observe only that list.
+    const observer = new MutationObserver(sync);
+    observer.observe(ed.layerList, { childList: true });
+    sync();
+}
+
 export function initStudio(opts) {
     context = opts;
     const bar = document.getElementById("shell-bar");
@@ -177,4 +341,5 @@ export function attachStudio(ed) {
     };
     pages.forEach((p, i) => { const b = button(p.title, p.icon, () => choose(i)); tabs.push(b); rail.appendChild(b); });
     choose(4, document.body.classList.contains("studio-simple"));
+    attachImageToolbar(ed, () => choose(4));
 }
