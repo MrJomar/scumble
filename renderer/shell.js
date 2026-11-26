@@ -904,7 +904,11 @@ window.scumble.updates.status().then((s) => { renderUpdate(s); announceUpdate(s)
 if (window.scumble.starNote) window.scumble.starNote().then(showStarNote, () => { /* an older main */ });
 ui.updateCheck.addEventListener("click", async () => { renderUpdate(await window.scumble.updates.check()); });
 ui.updateInstall.addEventListener("click", () => updateAction());
-ui.updateBar.addEventListener("click", () => updateAction());
+ui.updateBar.addEventListener("click", async () => {
+    if (!ui.updateInstall.hidden) { updateAction(); return; }
+    try { renderUpdate(await window.scumble.updates.check()); }
+    catch (err) { renderUpdate({ state: "error", error: String(err.message || err) }); }
+});
 ui.netCurl.addEventListener("change", async () => { shellState.settings = await window.scumble.settings.set({ network: { ...(shellState.settings.network || {}), curl: ui.netCurl.checked } }); renderNetwork(); });
 ui.updateAuto.addEventListener("change", async () => { shellState.settings = await window.scumble.settings.set({ updates: { ...(shellState.settings.updates || {}), check: ui.updateAuto.checked } }); });
 

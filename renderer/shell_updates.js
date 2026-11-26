@@ -55,9 +55,13 @@ export function renderUpdate(s) {
     ui.updateAuto.parentElement.hidden = store;
     ui.updateHelp.hidden = store || notify;
     ui.updateHelpNotify.hidden = !notify;
-    ui.updateBar.hidden = !offered;
-    ui.updateBar.title = notify ? "A new version is out; this copy does not update itself: open its release page" : UPDATE_LABELS.barTitle;
-    ui.updateBar.textContent = !offered ? "" : notify ? `Download ${s.version}` : `Update to ${s.version}`;
+    const state = s && s.state;
+    const checking = state === "checking", downloading = state === "downloading";
+    ui.updateBar.hidden = false;
+    ui.updateBar.disabled = checking || downloading || store || state === "dev";
+    ui.updateBar.dataset.updateState = state || "idle";
+    ui.updateBar.title = offered ? "Hay una actualización disponible" : checking ? "Buscando actualizaciones" : downloading ? "Descargando la nueva versión" : store ? "Actualizaciones desde Microsoft Store" : state === "dev" ? "Las actualizaciones requieren la versión instalada" : state === "error" ? "No se pudo comprobar: " + (s.error || "Error desconocido") : "Buscar actualizaciones de Scumble Studio";
+    ui.updateBar.textContent = offered ? (notify ? `↓ Descargar ${s.version}` : `↑ Actualizar a ${s.version}`) : checking ? "Buscando…" : downloading ? `↓ Nueva versión ${s.version || ""} · ${s.percent ?? 0}%` : state === "latest" ? `✓ Al día · ${s.current}` : state === "error" ? "↻ Reintentar actualización" : "↻ Actualizar";
 }
 
 /** The release page Download opens: the one main names (electron/main/updater.js releaseUrl), else the tag's. */
@@ -154,10 +158,10 @@ export async function announceUpdate(s) {
         window.scumble.updates.announced(v).catch(() => { /* this window still remembers it */ });
         if (notify) {
             const n = await dialogs.ask({
-                title: `Scumble ${v} is out`,
-                message: "This copy does not update itself. Download the new zip and unpack it where you unpacked this one, so its Scumble folder lands on this one: the data folder stays.",
+                title: `Nueva actualización: Scumble Studio ${v}`,
+                message: "Esta copia no se actualiza por sí sola. Abre la página de la nueva versión para descargarla.",
                 detail: updateQuestionDetail(now),
-                buttons: ["Download", "Later", "Skip this version"],
+                buttons: ["Descargar", "Más tarde", "Omitir esta versión"],
                 defaultId: 0,
                 cancelId: 1,
                 // it opens unasked: a key the user was typing answers Later
@@ -168,10 +172,10 @@ export async function announceUpdate(s) {
             return n;
         }
         const i = await dialogs.ask({
-            title: `Scumble ${v} is ready`,
-            message: `You have ${now.current}. Restart and update saves your documents, installs ${v} and starts it; the documents come back as they were.`,
+            title: `Nueva actualización: Scumble Studio ${v}`,
+            message: `Tienes la versión ${now.current}. Reiniciar y actualizar guarda tus documentos, instala ${v} y vuelve a abrir el programa.`,
             detail: updateQuestionDetail(now),
-            buttons: ["Restart and update", "Later", "Skip this version"],
+            buttons: ["Reiniciar y actualizar", "Más tarde", "Omitir esta versión"],
             defaultId: 0,
             cancelId: 1,
             // it opens unasked: a key the user was typing answers Later, never the restart

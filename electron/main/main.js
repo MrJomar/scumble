@@ -1620,7 +1620,7 @@ function startApp() {
     if (url) connectComfy().catch((err) => console.warn("connect at start:", err.message));
     const upd = settings.get().updates || {};
     updater.setSkip(upd.skip);
-    if (app.isPackaged && !headless && !agentMode && upd.check !== false) setTimeout(() => updater.check().catch(() => {}), 8000);
+    if (app.isPackaged && !headless && !agentMode && upd.check !== false) setTimeout(() => updater.check().catch(() => {}), 1500);
     app.on("activate", () => showWindow());
     app.on("window-all-closed", () => { comfy.disconnect(); app.quit(); });
 }
