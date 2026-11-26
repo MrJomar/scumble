@@ -1274,6 +1274,16 @@ function installIpc() {
     });
     // .scumble documents (electron/main/documents.js)
     ipcMain.handle("documents:choosePath", (_e, a) => chooseDocumentPath(a || {}));
+    ipcMain.handle("documents:recentThumbnail", async (_e, file) => {
+        // Only files already present in the application's own recent list may be read.
+        if (typeof file !== "string") return null;
+        const recent = recentDocuments().find((r) => pathKey(r.path) === pathKey(file));
+        if (!recent) return null;
+        try {
+            const bytes = await require("./docfile").readThumbnail(recent.path);
+            return bytes ? new Uint8Array(bytes) : null;
+        } catch (_) { return null; }
+    });
     ipcMain.handle("documents:write", async (_e, req) => {
         const r = await documents.write(req || {});
         if (req && req.recent !== false) addRecent(r.path);      // a copy (save_document copy) is not the tab's file

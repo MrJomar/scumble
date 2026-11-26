@@ -72,7 +72,8 @@ body.shell-canvas-only .studio-base-outline { display:none !important; }
 /* Studio start page: keep the native editor mounted behind the workspace. */
 .studio-home { display:none; }
 body.studio-home-open .studio-home:not([hidden]) { display:flex; flex:1; min-width:0; min-height:0; overflow:auto; color:#222332; background:linear-gradient(120deg,#d8f4f4 0,#eae1fa 26%,#fff 49%); }
-body.studio-home-open #editor-host { position:absolute; visibility:hidden; pointer-events:none; }
+body.studio-home-open #shell-main { position:relative; }
+body.studio-home-open #editor-host { position:absolute; inset:0; visibility:hidden; pointer-events:none; }
 body.studio-home-open #shell-tabs { display:none; }
 .studio-home-nav { display:flex; flex-direction:column; flex:0 0 112px; gap:10px; padding:18px 9px; background:#faf8ff; border-right:1px solid #e9e4f2; position:sticky; top:0; align-self:flex-start; min-height:100%; box-sizing:border-box; }
 .studio-home-action { font:inherit; color:#252437; background:#fff; border:1px solid #e3dfee; border-radius:10px; cursor:pointer; padding:10px; }

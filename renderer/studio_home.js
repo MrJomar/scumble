@@ -22,7 +22,7 @@ function el(tag, cls, text) {
 function action(label, run, cls = "") {
     const b = el("button", "studio-home-action " + cls, label);
     b.type = "button";
-    b.addEventListener("click", () => Promise.resolve(run()).catch((err) => { status.textContent = String(err.message || err); }));
+    b.addEventListener("click", () => Promise.resolve().then(run).catch((err) => { status.textContent = String(err.message || err); }));
     return b;
 }
 function revoke() { for (const u of urls) URL.revokeObjectURL(u); urls = []; }
@@ -77,20 +77,21 @@ async function renderRecents() {
             const name = String(r.name || r.path).replace(/\.scumble$/i, "");
             if (!matches(name)) continue;
             const date = r.time ? new Date(r.time).toLocaleDateString("es-MX") : "";
-            card(name, "Proyecto guardado" + (date ? " · " + date : ""), async () => {
+            const preview = card(name, "Proyecto guardado" + (date ? " · " + date : ""), async () => {
                 const result = await ctx.openDocument(r.path);
                 if (result) hideStudioHome();
                 else status.textContent = "No se pudo abrir el proyecto. Comprueba que sigue en su ubicación.";
             });
+            pending.push({ path: r.path, preview });
         }
     } catch (err) { console.warn("Studio recent documents", err); }
     if (seq !== generation) return;
     if (!recent.childElementCount) recent.appendChild(el("p", "studio-home-empty", filter ? "No hay diseños que coincidan." : "Tus diseños abiertos y proyectos .scumble guardados aparecerán aquí."));
-    // Preview only live, restored tabs; saved-only entries use a document icon without loading their pixels.
-    for (const {ed, preview} of pending) {
+    // Live tabs render their preview; saved projects read the embedded PNG only.
+    for (const {ed, path, preview} of pending) {
         if (seq !== generation) break;
         try {
-            const bytes = await ctx.host.documentThumbnail(ed);
+            const bytes = ed ? await ctx.host.documentThumbnail(ed) : await window.scumble.documents.recentThumbnail(path);
             if (!bytes || seq !== generation) continue;
             const u = URL.createObjectURL(new Blob([bytes], {type:"image/png"}));
             urls.push(u);

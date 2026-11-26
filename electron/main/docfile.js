@@ -799,10 +799,24 @@ function isScumble(head) {
     return head.readUInt32LE(0) === 0x04034b50 && head.toString("ascii", 30, 38) === "mimetype" && head.toString("ascii", 38, 38 + MIME.length) === MIME;
 }
 
+// Read only the small embedded preview, without importing any project pixels.
+async function readThumbnail(file) {
+    const fh = await fsp.open(file, "r");
+    try {
+        const { entries } = await readDirectory(fh);
+        const mime = entries[0];
+        if (!mime || mime.name !== "mimetype" || (await readEntry(fh, mime, 256)).toString("ascii") !== MIME) return null;
+        const thumb = entries.find((entry) => entry.name === THUMB_ENTRY);
+        if (!thumb) return null;
+        const bytes = await readEntry(fh, thumb, 16 * 1048576);
+        return bytes.length > 8 && bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? bytes : null;
+    } finally { await fh.close(); }
+}
+
 module.exports = {
     MIME, FORMAT_VERSION, READER_VERSION, HEADER_ENTRY, THUMB_ENTRY, TEMP_RE, LIMITS,
     setLimits, resetLimits, mirrorPath, keyOf, entryOf, refOfEntry, collectRefs, renameRefs,
-    buildHeader, checkHeader, writeDocument, readDirectory, openDocument, sweepTemps, tempFor, registerTemp, unregisterTemp,
+    buildHeader, checkHeader, writeDocument, readDirectory, readThumbnail, openDocument, sweepTemps, tempFor, registerTemp, unregisterTemp,
     renameRetry, freeSpace, BUSY, badPart,
     isScumble, crcOfFile, fmtBytes, FEATURES, featuresOf, readerFor, versionFor,
     READER_OF_BLEND,
