@@ -35,7 +35,7 @@ body.shell-canvas-only .studio-rail,body.shell-canvas-only .studio-panel { displ
 
 /* Persistent update control in both workspaces. The original updater owns all state. */
 #shell-bar #shell-update { flex:none; white-space:nowrap; font-weight:700; color:#fff; border-radius:8px; }
-body.studio-simple #shell-bar #shell-update { background:#ffffff20 !important; border-color:#ffffff90 !important; }
+body.studio-simple #shell-bar #shell-update:not([data-update-state="downloaded"]):not([data-update-state="available"]):not([data-update-state="downloading"]):not([data-update-state="error"]) { background:#ffffff20 !important; border-color:#ffffff90 !important; }
 #shell-bar #shell-update[data-update-state="downloaded"],#shell-bar #shell-update[data-update-state="available"],#shell-bar #shell-update[data-update-state="downloading"] { background:#146b46 !important; border-color:#0e5838 !important; color:#fff; }
 #shell-bar #shell-update[data-update-state="error"] { background:#9e3d2a !important; border-color:#873322 !important; color:#fff; }
 #shell-bar #shell-update:disabled { cursor:default; opacity:.85; }
