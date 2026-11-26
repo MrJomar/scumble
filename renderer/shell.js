@@ -3,6 +3,7 @@
 // recipes, local files) and the menu commands.
 import { host, api } from "./editor/host.js";
 import { initStudio, attachStudio } from "./studio.js";
+import { initStudioHome, showStudioHome, hideStudioHome } from "./studio_home.js";
 import { InpaintEditor, STYLE as EDITOR_STYLE } from "./editor/inpaint_canvas.js";
 import { setPixelsOptions } from "./editor/inpaint_pixels.js";
 import { commands, docSummary } from "./commands.js";
@@ -125,7 +126,7 @@ const ui = {
 };
 
 shellState.settings = await window.scumble.settings.get();
-initStudio({ host, openSettings });
+initStudio({ host, openSettings, showHome: showStudioHome, hideHome: hideStudioHome, saveDocument: (ed) => saveDocumentFromUi(ed) });
 shellState.lastStatus = { state: "disconnected", message: "not connected" };
 shellState.lastProbe = null;
 // the canvas-only view (canvasOnly below): { ed, wasFullScreen, view, fitted, rulers, w, h } while it is on, and
@@ -209,6 +210,7 @@ async function newCanvasInTab(editor) {
 }
 
 function activate(editor) {
+    hideStudioHome();
     host.activate(editor);
     window.editor = editor;   // for tests and the devtools console: always the active one
     renderTabs();
@@ -1238,7 +1240,9 @@ window.scumble.documents.onOpenRequest(async (paths) => { for (const p of paths 
 shellState.takesPending = false;
 window.scumble.documents.onPending(async () => { if (shellState.takesPending) await openPendingDocuments(); });
 async function openPendingDocuments() {
-    try { for (const p of await window.scumble.documents.takePending()) await openDocumentFromUi(p); } catch (err) { console.warn("documents to open", err); }
+    let opened = 0;
+    try { for (const p of await window.scumble.documents.takePending()) if (await openDocumentFromUi(p)) opened++; } catch (err) { console.warn("documents to open", err); }
+    return opened;
 }
 
 // Ctrl+S saves the document, Ctrl+Shift+S is Save As, Ctrl+Shift+E exports the picture (the user, 2026-09-26, §9).
@@ -1558,7 +1562,19 @@ selectRecipe(shellState.settings.recipe);
 // documents named at the start (a double click, a second start): after the session's tabs are back and the recipe is
 // chosen (an open compares the document's recipe with it)
 shellState.takesPending = true;
-await openPendingDocuments();
+const openedAtStart = await openPendingDocuments();
+initStudioHome({ host, activate, openDocument: openDocumentFromUi, createCanvas: async (name, w, h) => {
+    const current = host.editor;
+    const ed = current && !current.base && !current._loading ? current : newDocument();
+    await ed.newCanvas(`${w}x${h}`);
+    if (ed.width !== w || ed.height !== h) return null;
+    ed.docExtra = { ...(ed.docExtra || {}), studioName: name };
+    ed.setTool("transform");
+    ed.notifyChanged();
+    activate(ed);
+    return ed;
+}});
+if (!openedAtStart && startMode !== "safe") showStudioHome();
 
 /**
  * The window's side of the Comfy Cloud notes (S6; the fix contract of 0.1.49, section 2): main reads every note it

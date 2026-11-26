@@ -34,6 +34,7 @@ function withEditor(run) {
 function setMode(simple) {
     document.body.classList.toggle("studio-simple", simple);
     try { localStorage.setItem("studio.simple", simple ? "1" : "0"); } catch (_) { /* optional */ }
+    if (!simple) context.hideHome();
     const toggle = document.getElementById("studio-mode");
     toggle.textContent = simple ? "Modo avanzado" : "Modo sencillo";
     toggle.setAttribute("aria-pressed", String(!simple));
@@ -335,8 +336,10 @@ export function initStudio(opts) {
     const bar = document.getElementById("shell-bar");
     const group = make("div", "studio-top");
     const add = (label, glyph, fn, cls) => group.appendChild(button(label, glyph, withEditor(fn), cls));
-    add("Nuevo diseño", "newfile", (ed) => ed.newCanvasTab());
-    add("Abrir", "load", (ed) => ed.fileInput.click());
+    group.appendChild(button("Inicio", "newfile", () => context.showHome()));
+    group.appendChild(button("Crear", "newfile", () => context.showHome()));
+    add("Guardar proyecto", "save", (ed) => context.saveDocument(ed));
+    add("Añadir imagen", "load", (ed) => { context.hideHome(); (ed.width ? ed.imageInput : ed.fileInput).click(); });
     add("Deshacer", "undo", (ed) => ed.undoStep());
     add("Rehacer", "redo", (ed) => ed.redoStep());
     add("Ajustar vista", "fit", (ed) => ed.fitView());
@@ -367,7 +370,7 @@ export function attachStudio(ed) {
     rail.appendChild(pointer);
     const pages = [
         { title: "Diseño", icon: "newfile", desc: "Crea un lienzo o ajusta sus dimensiones.", actions: [
-            ["Nuevo diseño", "newfile", () => ed.newCanvasTab()],
+            ["Nuevo diseño", "newfile", () => context.showHome()],
             ["Tamaño y formato", "canvas", () => showSection(ed, "Canvas")],
             ["Ajustar a pantalla", "fit", () => ed.fitView()]
         ] },
@@ -382,7 +385,7 @@ export function attachStudio(ed) {
             ["Mover / escalar", "transform", () => ed.setTool("transform")]
         ] },
         { title: "Imágenes", icon: "image", desc: "Abre una foto o importa otras como capas.", actions: [
-            ["Abrir imagen", "load", () => ed.fileInput.click()],
+            ["Abrir imagen", "load", () => (ed.width ? ed.imageInput : ed.fileInput).click()],
             ["Añadir imágenes", "image", () => ed.imageInput.click()],
             ["Mover / escalar", "transform", () => ed.setTool("transform")]
         ] },

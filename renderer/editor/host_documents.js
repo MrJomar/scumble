@@ -68,6 +68,7 @@ export const HostDocumentsPart = {
     /** The name a document is saved and shown under: its file's stem, else the picture's file name. */
     documentName(ed) {
         if (ed && ed.docFile && ed.docFile.name) return String(ed.docFile.name).replace(/\.scumble$/i, "");
+        if (ed && ed.docExtra && ed.docExtra.studioName) return String(ed.docExtra.studioName);
         if (!ed || !ed.base || !ed.base.ref) return "Untitled";
         return String(ed.base.ref.filename || "image").replace(/\.[a-z0-9]+$/i, "").replace(/~[0-9a-f]{8,64}$/i, "");
     },

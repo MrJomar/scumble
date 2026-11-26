@@ -429,7 +429,11 @@ function buildLayers(ed) {
         layersHead.appendChild(inp);
         return inp;
     };
-    ed.imageInput = fileInput((files) => ed.addImageLayers(files, "none", { place: "fit" }));
+    ed.imageInput = fileInput(async (files) => {
+        const studio = !!ed.studioSelectionChanged && document.body.classList.contains("studio-simple");
+        await ed.addImageLayers(files, "none", studio && ed.width ? { place: "at", at: [ed.width / 2, ed.height / 2] } : { place: "fit" });
+        if (studio) ed.setTool("transform");
+    });
     ed.refInput = fileInput((files) => ed.addImageLayers(files, "reference"));
     ed.fontInput = fileInput((files) => ed.addFontFiles(files));
     ed.fontInput.accept = ".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2";
