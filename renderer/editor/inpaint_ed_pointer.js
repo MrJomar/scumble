@@ -420,6 +420,44 @@ export class PointerPart {
             return;
         }
 
+        // Studio: normal clicks select the topmost visible editable element, then use the
+        // original transform gesture for moving and scaling. Other tools and advanced mode stay unchanged.
+        if (this.studioSelectionChanged && document.body.classList.contains("studio-simple") &&
+            this.tool === "transform" && !this.pending && !e.ctrlKey && !e.metaKey && !e.altKey && !this.quickMask) {
+            const current = this.activeLayer();
+            const handle = current && !this.isLocked(current) && current.kind !== "filter" &&
+                (this.handleAt(ix, iy) || this.rotateZoneAt(current, ix, iy));
+            if (!handle) {
+                const hit = this.pickLayerAt(ix, iy, { studio: true });
+                if (hit) {
+                    this.studioBaseSelected = false;
+                    if (e.shiftKey) {
+                        this.clickLayerRow(hit, { ctrlKey: true });
+                        this.studioSelectionChanged();
+                        return;
+                    }
+                    if (current !== hit || this.multiSelected() || this.activeGroupId) this.clickLayerRow(hit);
+                    this.studioSelectionChanged();
+                    if (hit.kind === "text" && isDouble && !this.isLocked(hit)) {
+                        this.beginTextEdit(hit); this.draw(); return;
+                    }
+                    if (this.isLocked(hit)) return;
+                    // fall through into transform, allowing an immediate drag on the selected element
+                } else {
+                    const inside = ix >= 0 && iy >= 0 && ix < this.width && iy < this.height;
+                    const px = this.basePx;
+                    this.studioBaseSelected = !!(inside && px && !this._blankBase &&
+                        px.readRect(Math.floor(ix), Math.floor(iy), 1, 1).data[3] > 8);
+                    this.activeLayerId = null;
+                    this.activeGroupId = null;
+                    this.layerSel = new Set();
+                    this.layerAnchorId = null;
+                    this.renderLayers(); this.updateSubbar(); this.studioSelectionChanged(); this.draw();
+                    return;
+                }
+            }
+        }
+
         // Krita / Photoshop modifiers: Shift adds, Alt subtracts, Shift+Alt intersects; rectangle and lasso replace otherwise.
         const selMode = selModeOf(e);
         if (this.tool === "select" || this.tool === "deselect") {

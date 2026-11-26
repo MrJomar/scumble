@@ -37,7 +37,11 @@ function setMode(simple) {
     const toggle = document.getElementById("studio-mode");
     toggle.textContent = simple ? "Modo avanzado" : "Modo sencillo";
     toggle.setAttribute("aria-pressed", String(!simple));
-    if (simple && context.host.editor) context.host.editor.showPane("image");
+    if (simple && context.host.editor) {
+        context.host.editor.showPane("image");
+        context.host.editor.setTool("transform");
+    }
+    if (context.host.editor?.studioSelectionChanged) context.host.editor.studioSelectionChanged();
 }
 async function settings(section) {
     await context.openSettings();
@@ -58,10 +62,43 @@ function revealLayers(ed) {
     ed.showPane("image");
     ed.layerList.scrollIntoView({ block: "nearest" });
 }
+// Keep the original pixels as an editable bottom layer and replace the fixed
+// background with transparent pixels. Canvas history stores both the old base and layers.
+async function promoteBase(ed) {
+    if (!ed.base?.px || ed._blankBase || ed._loading || ed.gestureHeld() || ed.resizingRun() || ed._eachArea) return null;
+    const base = ed.base;
+    const generation = ed.historyGen;
+    const composite = ed.compositeVersion;
+    const blank = ed.pixels.Layer.empty(ed.width, ed.height);
+    let installed = false;
+    try {
+        say(ed, "Preparando imagen para editar…");
+        const { ref } = await ed.uploadBase(blank);
+        if (ed._destroyed || ed.base !== base || generation !== ed.historyGen ||
+            composite !== ed.compositeVersion || ed.activeLayer() || ed.gestureHeld()) {
+            say(ed, "La imagen cambió; vuelve a seleccionarla."); return null;
+        }
+        const before = ed.snapshot({ kind: "canvas" });
+        if (!before) return null;
+        ed.pushUndoSnapshot(before, { label: "Convertir fondo en imagen editable" });
+        const layer = ed.addLayer({ name: base.ref?.filename || "Imagen", kind: "image",
+            ref: base.ref || null, px: base.px.clone(), x: 0, y: 0, w: ed.width, h: ed.height,
+            dirty: !base.ref }, { quiet: true });
+        ed.layers.splice(ed.layers.indexOf(layer), 1);
+        ed.layers.unshift(layer);
+        ed.base = { ref, px: blank };
+        installed = true;
+        ed.studioBaseSelected = false;
+        ed.uploaded = ed.makeUploaded();
+        ed.layersRestacked();
+        ed.renderInfo();
+        return layer;
+    } finally { if (!installed) blank.release(); }
+}
 async function cutout(ed) {
     if (!ed.width) { ed.fileInput.click(); return; }
     const backends = availableCutoutBackends();
-    const local = backends.find((b) => b.inApp && b.id === "app:birefnet_lite") || backends.find((b) => b.inApp && b.id === "app:birefnet");
+    const local = backends.find((b) => b.inApp && b.id === "app:birefnet") || backends.find((b) => b.inApp && b.id === "app:birefnet_lite");
     if (!local) {
         say(ed, "Descarga BiRefNet Lite o BiRefNet en Helpers para quitar fondos sin pagar.");
         await settings("Helpers");
@@ -69,24 +106,25 @@ async function cutout(ed) {
     }
     if (ed.cutoutPending) { say(ed, "Ya se está quitando un fondo."); return; }
     let layer = ed.activeLayer();
-    if (!layer && ed.base?.px) {
-        ed.pushUndo({ kind: "layers", label: "Copia para quitar fondo" });
-        layer = ed.addLayer({ name: "Recorte", kind: "image", ref: null, px: ed.base.px.clone(),
-            x: 0, y: 0, w: ed.width, h: ed.height, dirty: true });
+    if (!layer && ed.base?.px && ed.studioBaseSelected) {
+        if (ed.studioPromoting) return;
+        ed.studioPromoting = true;
+        try { layer = await promoteBase(ed); } finally { ed.studioPromoting = false; }
     }
-    if (!layer || !layer.px || layer.kind === "filter" || ed.isReference(layer)) {
+    if (!layer || !layer.px || layer.kind === "filter" || layer.kind === "text" || ed.isReference(layer) || ed.isLocked(layer)) {
         say(ed, "Selecciona una capa de imagen antes de quitar su fondo."); return;
     }
     const old = ed.cutoutSettings.backend;
     ed.cutoutSettings.backend = local.id;
     try {
         const result = await ed.cutoutLayer(layer);
-        if (result === "done") say(ed, "Recorte listo. Usa PNG transparente para guardar solo la capa recortada.");
+        if (result === "done") say(ed, "Fondo eliminado. Puedes mover la imagen o exportarla como PNG transparente.");
     } finally {
         ed.cutoutSettings.backend = old;
         ed.refreshCutoutBackends();
     }
     revealLayers(ed);
+    ed.setTool("transform");
 }
 function filter(ed, id) {
     if (!ed.width) { say(ed, "Abre una imagen o crea un diseño primero."); return; }
@@ -104,6 +142,34 @@ function attachImageToolbar(ed, openEdit) {
     const actions = make("div", "studio-imagebar-actions");
     bar.appendChild(actions);
     ed.viewEl.appendChild(bar);
+    const outline = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    outline.classList.add("studio-base-outline");
+    outline.setAttribute("aria-hidden", "true");
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    outline.appendChild(polygon);
+    ed.viewEl.appendChild(outline);
+    ed.studioDrawSelection = () => {
+        const show = document.body.classList.contains("studio-simple") && ed.tool === "transform" &&
+            !ed.activeLayer() && ed.studioBaseSelected && ed.width && ed.canvas.width && ed.canvas.height;
+        outline.classList.toggle("studio-outline-show", !!show);
+        if (show) {
+            outline.setAttribute("viewBox", "0 0 " + ed.canvas.width + " " + ed.canvas.height);
+            polygon.setAttribute("points", [[0,0],[ed.width,0],[ed.width,ed.height],[0,ed.height]].map(([x,y]) => ed.imageToScreen(x,y).join(",")).join(" "));
+        }
+    };
+    const textBar = make("div", "studio-imagebar studio-textbar");
+    textBar.setAttribute("role", "toolbar");
+    textBar.setAttribute("aria-label", "Editar texto seleccionado");
+    textBar.hidden = true;
+    const textActions = make("div", "studio-imagebar-actions");
+    textActions.append(
+        button("Editar texto", "text", () => { const l = ed.activeLayer(); if (l?.kind === "text" && !ed.isLocked(l)) ed.beginTextEdit(l); }),
+        button("Fuente, tamaño y color", "fx", () => { openEdit(); revealLayers(ed); }),
+        button("Mover / escalar", "transform", () => ed.setTool("transform")),
+        button("Duplicar", "image", () => ed.duplicateLayer())
+    );
+    textBar.appendChild(textActions);
+    ed.viewEl.appendChild(textBar);
     const active = () => ed.activeLayer();
     const canEditLayer = () => {
         const l = active();
@@ -237,9 +303,14 @@ function attachImageToolbar(ed, openEdit) {
     add("Estilo", "fx", openEdit);
     function sync() {
         const l = active();
-        const shown = !!ed.width && (l ? !!l.px && l.kind !== "filter" && l.kind !== "text" && !ed.isReference(l) : !!ed.base?.px);
+        if (l) ed.studioBaseSelected = false;
+        const shown = !!ed.width && (l ? !!l.px && l.kind !== "filter" && l.kind !== "text" && !ed.isReference(l) && !ed.isControl(l) : !!ed.base?.px && !!ed.studioBaseSelected);
+        const textShown = !!(ed.width && l?.kind === "text" && !ed.activeGroupId && !ed.multiSelected());
         bar.hidden = !shown;
-        ed.root.classList.toggle("studio-imagebar-visible", shown);
+        textBar.hidden = !textShown;
+        ed.root.classList.toggle("studio-imagebar-visible", shown || textShown);
+        ed.root.classList.toggle("studio-no-selection", !l && !ed.studioBaseSelected);
+        ed.studioDrawSelection();
         const editable = canEditLayer();
         const base = shown && !l;
         replace.disabled = !(editable || base);
@@ -253,6 +324,7 @@ function attachImageToolbar(ed, openEdit) {
         pct.textContent = opacityInput.value + "%";
     }
     // Rebuilt by native selection, loading, undo, and layer edits. Observe only that list.
+    ed.studioSelectionChanged = sync;
     const observer = new MutationObserver(sync);
     observer.observe(ed.layerList, { childList: true });
     sync();
@@ -291,6 +363,8 @@ export function attachStudio(ed) {
     panel.append(heading, description, grid);
     ed.panes.image.prepend(panel);
     body.prepend(rail);
+    const pointer = button("Seleccionar", "transform", () => { ed.setTool("transform"); });
+    rail.appendChild(pointer);
     const pages = [
         { title: "Diseño", icon: "newfile", desc: "Crea un lienzo o ajusta sus dimensiones.", actions: [
             ["Nuevo diseño", "newfile", () => ed.newCanvasTab()],
@@ -342,4 +416,5 @@ export function attachStudio(ed) {
     pages.forEach((p, i) => { const b = button(p.title, p.icon, () => choose(i)); tabs.push(b); rail.appendChild(b); });
     choose(4, document.body.classList.contains("studio-simple"));
     attachImageToolbar(ed, () => choose(4));
+    if (document.body.classList.contains("studio-simple")) ed.setTool("transform");
 }

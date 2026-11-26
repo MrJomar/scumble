@@ -505,10 +505,11 @@ export class LayersPart {
     }
 
     /** Topmost visible pixel layer with an opaque pixel under (ix, iy), or null. */
-    pickLayerAt(ix, iy) {
+    pickLayerAt(ix, iy, { studio = false } = {}) {
         for (let i = this.layers.length - 1; i >= 0; i--) {
             const l = this.layers[i];
             if (!this.shown(l) || l.kind === "filter" || !l.px) continue;
+            if (studio && (this.isReference(l) || this.isControl(l) || l.opacity <= 0)) continue;
             if (ix < l.x || iy < l.y || ix >= l.x + l.w || iy >= l.y + l.h) continue;
             // one pixel read from the pixels (and the mask), never through a display canvas: a click must not
             // make a mirror as large as the layer on tiles (C2 step b's review)
@@ -899,7 +900,7 @@ export class LayersPart {
             list.appendChild(row);
         }
         const row = el("div", "ipc-layer" + (this.activeLayerId === null ? " ipc-selected" : ""));
-        row.addEventListener("click", () => { this.activeLayerId = null; this.renderLayers(); this.draw(); });
+        row.addEventListener("click", () => { this.activeLayerId = null; this.activeGroupId = null; this.layerSel = new Set(); if (this.studioSelectionChanged) this.studioBaseSelected = !!this.base && !this._blankBase; this.renderLayers(); this.draw(); });
         const top = el("div", "ipc-row");
         const eye = el("span", "ipc-mini");
         eye.innerHTML = icon("eye", 16);

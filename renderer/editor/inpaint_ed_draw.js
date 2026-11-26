@@ -125,6 +125,7 @@ export class DrawPart {
     draw() {
         this.drawScene();
         this.drawOverlays();
+        if (this.studioDrawSelection) this.studioDrawSelection();
         this.watchChains();
         this.scopeSoon();   // the Scope section's histogram, a moment after the picture changed (only while it is open)
     }
